@@ -1,0 +1,51 @@
+server:
+  port: ${PORT:5000}
+
+spring:
+  application:
+    name: campusbazaar
+  data:
+    mongodb:
+      uri: ${MONGO_URI}
+    # Redis is optional — if REDIS_URL is unset, Spring autoconfigures a localhost client
+    # whose first failing operation is swallowed by AuthService's try/catch.
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USER}
+    password: ${EMAIL_PASS}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 30MB
+
+campusbazaar:
+  jwt:
+    secret: ${JWT_SECRET}
+    refresh-secret: ${JWT_REFRESH_SECRET}
+    access-expiry-minutes: 15
+    refresh-expiry-days: 30
+  client-url: ${CLIENT_URL:http://localhost:3000}
+  college-email-domain: ${COLLEGE_EMAIL_DOMAIN:college.edu.in}
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME}
+    api-key: ${CLOUDINARY_API_KEY}
+    api-secret: ${CLOUDINARY_API_SECRET}
+  socketio:
+    host: 0.0.0.0
+    port: 9092
+  reports:
+    auto-ban-threshold: 5
+
+logging:
+  level:
+    org.springframework.security: INFO
+    com.campusbazaar: DEBUG

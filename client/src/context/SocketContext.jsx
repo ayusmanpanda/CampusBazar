@@ -21,7 +21,11 @@ export function SocketProvider({ children }) {
     const token = localStorage.getItem('accessToken');
     if (!token) return;
 
-    const socket = io('/', {
+    // VITE_SOCKET_URL points at the Socket.IO endpoint.
+    //   - Node server: socket runs on the same port as HTTP → leave unset (proxied by Vite)
+    //   - Spring Boot: socket runs on a separate port (default 9092) → set to http://localhost:9092
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || '/';
+    const socket = io(socketUrl, {
       auth: { token },
       transports: ['websocket']
     });

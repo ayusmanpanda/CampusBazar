@@ -2,7 +2,14 @@
 
 A college-only marketplace web app — students buy, sell, and negotiate items within their campus.
 
-Built with **React + Tailwind**, **Node + Express**, **MongoDB**, **Socket.io**, **JWT**, **Cloudinary**, **Redis (Upstash)**, **Nodemailer**, and **node-cron**.
+Two interchangeable backends ship with the project. Pick whichever stack you prefer:
+
+- **Node.js + Express** — see [server/](server/)
+- **Java 17 + Spring Boot 3.3** — see [server-springboot/](server-springboot/)
+
+Both speak the same REST + Socket.IO contract, so the React frontend works against either one without code changes.
+
+Frontend uses **React + Tailwind**, MongoDB Atlas for data, Cloudinary for images, Redis (optional) for sessions, Gmail SMTP for OTP, and a daily cron for cleanup.
 
 ---
 
@@ -26,97 +33,134 @@ Built with **React + Tailwind**, **Node + Express**, **MongoDB**, **Socket.io**,
 
 ```
 campusbazaar/
-├── server/
-│   ├── config/         # Mongo connect
-│   ├── models/         # User, Listing, Chat, Report, Notification
-│   ├── middleware/     # auth, admin, upload, validate, error
-│   ├── controllers/    # one per resource
-│   ├── routes/         # Express routers
-│   ├── socket/         # Socket.io handlers
-│   ├── jobs/           # node-cron tasks
-│   ├── utils/          # email, cloudinary, redis, jwt, otp
-│   └── index.js        # Express + HTTP + Socket.io entry
-├── client/
+├── server/                       # Node.js + Express backend
+│   ├── config/                   # Mongo connect
+│   ├── models/                   # User, Listing, Chat, Report, Notification
+│   ├── middleware/               # auth, admin, upload, validate, error
+│   ├── controllers/              # one per resource
+│   ├── routes/                   # Express routers
+│   ├── socket/                   # Socket.io handlers
+│   ├── jobs/                     # node-cron tasks
+│   ├── utils/                    # email, cloudinary, redis, jwt, otp
+│   └── index.js
+├── server-springboot/            # Java 17 + Spring Boot 3 backend
+│   ├── pom.xml
+│   └── src/main/
+│       ├── java/com/campusbazaar/
+│       │   ├── CampusBazaarApplication.java
+│       │   ├── config/           # SecurityConfig, MongoConfig (TTL), CloudinaryConfig, AppProperties
+│       │   ├── model/            # User, Listing, ChatRoom, Message, Report, Notification (Mongo docs)
+│       │   ├── repository/       # Spring Data MongoRepository interfaces
+│       │   ├── dto/              # request / response records
+│       │   ├── service/          # AuthService, ListingService, ChatService, ReportService, AdminService, NotificationService, UserService, EmailService, CloudinaryService
+│       │   ├── controller/       # @RestController per resource
+│       │   ├── security/         # JwtService, JwtAuthFilter, CurrentUser
+│       │   ├── socket/           # Netty Socket.IO server + event handler
+│       │   ├── scheduler/        # @Scheduled cron jobs
+│       │   └── exception/        # GlobalExceptionHandler, ApiException
+│       └── resources/application.yml
+├── client/                       # React + Tailwind (works with either backend)
 │   ├── src/
-│   │   ├── pages/      # Home, Listing, Chat, Profile, Dashboard, Admin, auth
-│   │   ├── components/ # ListingCard, ChatWindow, OfferCard, AdminTable, NotificationBell, Navbar
-│   │   ├── context/    # AuthContext, SocketContext
-│   │   ├── utils/      # api (axios), format helpers
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   └── index.css   # Tailwind
-│   ├── index.html
-│   ├── vite.config.js
-│   ├── tailwind.config.js
-│   └── postcss.config.js
-└── .env.example
+│   │   ├── pages/                # Home, Listing, Chat, Profile, Dashboard, Admin, auth
+│   │   ├── components/           # ListingCard, ChatWindow, OfferCard, AdminTable, NotificationBell, Navbar
+│   │   ├── context/              # AuthContext, SocketContext
+│   │   ├── utils/                # api (axios), format helpers
+│   │   ├── App.jsx · main.jsx · index.css
+│   ├── index.html · vite.config.js · tailwind.config.js · postcss.config.js
+│   └── .env.example              # VITE_SOCKET_URL — only needed for the Spring backend
+└── .env.example                  # backend env vars (shared by both stacks)
 ```
 
 ---
 
-## Setup
+## Setup — pick one backend
 
-### 1. Prerequisites
-- Node.js 18+
+### Common prerequisites
 - A MongoDB Atlas cluster (or local MongoDB)
 - A Cloudinary account (image hosting)
 - A Gmail account with an [App Password](https://myaccount.google.com/apppasswords) for OTP email
-- An [Upstash Redis](https://upstash.com/) URL (optional — server works without it)
+- An [Upstash Redis](https://upstash.com/) URL (optional — both backends run fine without it)
 
-### 2. Clone & install
+Copy the env template and fill in the values once — both backends read the same variables:
 
 ```bash
 cd campusbazaar
-
-# server deps
-cd server && npm install
-
-# client deps
-cd ../client && npm install
-```
-
-### 3. Configure environment
-
-Copy `.env.example` to `server/.env` and fill in values:
-
-```bash
-cp .env.example server/.env
-```
-
-```env
-PORT=5000
-MONGO_URI=mongodb+srv://...
-JWT_SECRET=replace-me
-JWT_REFRESH_SECRET=replace-me-too
-EMAIL_USER=you@gmail.com
-EMAIL_PASS=your_gmail_app_password
-CLOUDINARY_CLOUD_NAME=...
-CLOUDINARY_API_KEY=...
-CLOUDINARY_API_SECRET=...
-REDIS_URL=rediss://...upstash.io:6379
-COLLEGE_EMAIL_DOMAIN=college.edu.in
-CLIENT_URL=http://localhost:3000
+cp .env.example server/.env              # if running the Node backend
+cp .env.example server-springboot/.env   # if running the Spring Boot backend
 ```
 
 > Only emails ending in `@COLLEGE_EMAIL_DOMAIN` may sign up.
 
-### 4. Run
+---
 
-Open two terminals:
+### Option A — Node.js + Express
+
+**Prerequisites:** Node.js 18+
 
 ```bash
+# install deps
+cd campusbazaar/server && npm install
+cd ../client && npm install
+
 # terminal 1 — backend
-cd server
-npm run dev          # starts on http://localhost:5000
+cd campusbazaar/server
+npm run dev          # http://localhost:5000
+
+# terminal 2 — frontend
+cd campusbazaar/client
+npm run dev          # http://localhost:3000
 ```
+
+Vite proxies both `/api` and `/socket.io` to port 5000, so nothing else to configure.
+
+---
+
+### Option B — Java 17 + Spring Boot 3
+
+**Prerequisites:** Java 17+, Maven 3.9+ (or use the IDE's bundled Maven)
+
+The Spring Boot server reads env vars from a `.env` file (or your shell). On Windows PowerShell:
+
+```powershell
+cd campusbazaar\server-springboot
+Get-Content .env | ForEach-Object {
+  if ($_ -match '^\s*([^#][^=]+?)\s*=\s*(.*)$') { $env:($matches[1]) = $matches[2] }
+}
+mvn spring-boot:run                     # http://localhost:5000  (REST)  +  :9092  (Socket.IO)
+```
+
+On macOS/Linux:
 
 ```bash
-# terminal 2 — frontend
-cd client
-npm run dev          # starts on http://localhost:3000
+cd campusbazaar/server-springboot
+export $(grep -v '^#' .env | xargs)
+mvn spring-boot:run
 ```
 
-The Vite dev server proxies `/api` and `/socket.io` to the backend, so no extra config is required.
+The Spring backend serves REST on `:5000` and runs **Socket.IO on a separate port (9092)** because the Netty Socket.IO server cannot share Tomcat's port. Tell the React client where to find it:
+
+```bash
+# campusbazaar/client/.env
+VITE_SOCKET_URL=http://localhost:9092
+```
+
+Then start the client as usual:
+
+```bash
+cd campusbazaar/client
+npm install
+npm run dev          # http://localhost:3000
+```
+
+> When you switch back to the Node backend, simply remove or comment out `VITE_SOCKET_URL` and restart `npm run dev`.
+
+#### Build a runnable jar
+
+```bash
+cd campusbazaar/server-springboot
+mvn -DskipTests package
+java -jar target/campusbazaar-server-1.0.0.jar
+```
 
 ---
 
@@ -180,9 +224,33 @@ The client connects with `auth.token` set to the access token. Connections witho
 
 ## Cron Jobs
 
-- `0 0 * * *` — daily at midnight: expire 30-day-old listings, soft-delete users inactive 180+ days, auto-ban users with 5+ reports.
-- `0 * * * *` — hourly: delete unverified signup accounts older than 15 minutes.
-- ChatRoom collection has a TTL index on `lastMessageAt` (60 days) — MongoDB removes idle rooms automatically.
+Same schedule on both backends (Node uses `node-cron`; Spring uses `@Scheduled`):
+
+- daily at midnight (`0 0 0 * * *`) — expire 30-day-old listings, soft-delete users inactive 180+ days, auto-ban users with 5+ reports
+- hourly (`0 0 * * * *`) — delete unverified signup accounts older than 15 minutes
+- ChatRoom collection has a TTL index on `lastMessageAt` (60 days) — MongoDB removes idle rooms automatically. The Spring backend creates this index in [MongoConfig.java](server-springboot/src/main/java/com/campusbazaar/config/MongoConfig.java) at startup; the Node backend declares it on the schema in [Chat.js](server/models/Chat.js).
+
+---
+
+## Spring Boot ↔ Node — what maps to what
+
+| Concept                | Node                                        | Spring Boot                                                 |
+|------------------------|---------------------------------------------|-------------------------------------------------------------|
+| HTTP framework         | Express + middleware                        | `spring-boot-starter-web`                                   |
+| Mongo driver           | Mongoose                                    | `spring-boot-starter-data-mongodb` (`MongoRepository`)      |
+| TTL on chat rooms      | Mongoose `expireAfterSeconds` index         | Programmatic in `MongoConfig` (`indexOps.ensureIndex`)      |
+| Auth                   | `jsonwebtoken` + `bcryptjs`                 | `jjwt` + Spring Security `BCryptPasswordEncoder`            |
+| Auth filter            | `authMiddleware`                            | `JwtAuthFilter extends OncePerRequestFilter`                |
+| Validation             | `express-validator`                         | `@Valid` + Jakarta Bean Validation                          |
+| Image upload           | Multer + Cloudinary storage adapter         | `MultipartFile` → Cloudinary Java SDK                       |
+| Email (OTP)            | Nodemailer (Gmail SMTP)                     | `spring-boot-starter-mail` + `@Async` send                  |
+| Real-time              | `socket.io` server                          | `netty-socketio` (Socket.IO v4 protocol — same client)      |
+| Cron                   | `node-cron`                                 | `@Scheduled` + `@EnableScheduling`                          |
+| Redis (optional)       | `ioredis`                                   | `spring-boot-starter-data-redis` (`StringRedisTemplate`)    |
+| Error handling         | global `errorHandler` middleware            | `@RestControllerAdvice GlobalExceptionHandler`              |
+| Admin gate             | `adminMiddleware`                           | `.requestMatchers("/api/admin/**").hasRole("ADMIN")`        |
+
+Endpoint paths, request/response shapes, and Socket.IO event names are identical across both backends.
 
 ---
 
